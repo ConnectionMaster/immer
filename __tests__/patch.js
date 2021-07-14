@@ -5,7 +5,8 @@ import produce, {
 	produceWithPatches,
 	enableAllPlugins,
 	isDraft,
-	immerable
+	immerable,
+	nothing
 } from "../src/immer"
 
 enableAllPlugins()
@@ -1255,4 +1256,32 @@ test("maps can store __proto__, prototype and constructor props", () => {
 	expect(newMap.get("constructor").polluted).toBe("yes")
 	expect(newMap.get("prototype").polluted).toBe("yes")
 	expect(obj.polluted).toBe(undefined)
+})
+
+test("#648 assigning object to itself should not change patches", () => {
+	const input = {
+		obj: {
+			value: 200
+		}
+	}
+
+	const [nextState, patches] = produceWithPatches(input, draft => {
+		draft.obj.value = 1
+		draft.obj = draft.obj
+	})
+
+	expect(patches).toEqual([
+		{
+			op: "replace",
+			path: ["obj", "value"],
+			value: 1
+		}
+	])
+})
+
+test("#791 patch for  nothing is stored as undefined", () => {
+	const [newState, patches] = produceWithPatches({abc: 123}, draft => nothing)
+	expect(patches).toEqual([{op: "replace", path: [], value: undefined}])
+
+	expect(applyPatches({}, patches)).toEqual(undefined)
 })
